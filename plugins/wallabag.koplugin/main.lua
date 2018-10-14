@@ -88,7 +88,7 @@ function Wallabag:addToMainMenu(menu_items)
                     --self:refreshCurrentDirIfNeeded()
                 end,
                 enabled_func = function()
-                    return self.is_delete_finished or self.is_delete_read
+                    return self.is_delete_finished or self.is_delete_read or self.is_archive_finished or self.is_archive_read
                 end,
             },
             {
@@ -164,7 +164,23 @@ function Wallabag:addToMainMenu(menu_items)
                         end,
                     },
                     {
-                        text = _("Process deletions when downloading"),
+                        text = _("Remotely archive Finished articles"),
+                        checked_func = function() return self.is_archive_finished end,
+                        callback = function()
+                            self.is_archive_finished = not self.is_archive_finished
+                            self:saveSettings()
+                        end,
+                    },
+                    {
+                        text = _("Remotely archive 100% read articles"),
+                        checked_func = function() return self.is_archive_read end,
+                        callback = function()
+                            self.is_archive_read = not self.is_archive_read
+                            self:saveSettings()
+                        end,
+                    },
+                    {
+                        text = _("Process deletions/archivations when downloading"),
                         checked_func = function() return self.is_auto_delete end,
                         callback = function()
                             self.is_auto_delete = not self.is_auto_delete
@@ -186,10 +202,11 @@ function Wallabag:addToMainMenu(menu_items)
                             UIManager:show(InfoMessage:new{
                                 text = _('Download directory: use a directory that is exclusively used by the Wallabag plugin. ' ..
                                          'Existing files in this directory risk being deleted\n\n' .. 
-                                         'Articles marked as Finished or 100% can be deleted from the server.\n' ..
+                                         'Articles marked as Finished or 100% can be deleted or archived on the server. ' ..
+                                         'Deleting takes precedence over archiving.\n' ..
                                          'Those articles can also be deleted automatically when downloading new articles if the ' ..
-                                         '\'Process detetions during download\' option is enabled.' ..
-                                         '\'Synchronise remotely delete files\' option will remove local files that do not exist anymore on the server.' )
+                                         'Process detetions during download\' option is enabled.\n\n' ..
+                                         'Synchronise remotely delete files\' option will remove local files that do not exist anymore on the server.' )
                             })
                         end,
                     }
