@@ -1,9 +1,7 @@
 local DocumentRegistry = require("document/documentregistry")
 local FFIUtil = require("ffi/util")
-local JSON = require("json")
 local http = require('socket.http')
 local https = require('ssl.https')
-local logger = require("logger")
 local ltn12 = require('ltn12')
 local mime = require('mime')
 local socket = require('socket')
@@ -19,7 +17,7 @@ function WebDavApi:isCurrentDirectory( current_item, address, path )
     local home_path
     -- find first occurence of / after http(s)://
     local start = string.find( address, "/", 9 )
-    if not start then 
+    if not start then
         home_path = "/"
     else
         home_path = string.sub( address, start )
@@ -34,7 +32,7 @@ function WebDavApi:isCurrentDirectory( current_item, address, path )
     if item == home_path then
         is_home = true
     else
-        local temp_path = string.sub( item, string.len(home_path) + 1 ) 
+        local temp_path = string.sub( item, string.len(home_path) + 1 )
         if temp_path == path then
             is_parent = true
         end
@@ -43,23 +41,22 @@ function WebDavApi:isCurrentDirectory( current_item, address, path )
 end
 
 -- version of urlEncode that doesn't encode the /
-function WebDavApi:urlEncode(url)
+function WebDavApi:urlEncode(url_data)
     local char_to_hex = function(c)
         return string.format("%%%02X", string.byte(c))
     end
-    if url == nil then
+    if url_data == nil then
         return
     end
-    url = url:gsub("([^%w%/%-%.%_%~%!%*%'%(%)])", char_to_hex)
-    return url
+    url_data = url_data:gsub("([^%w%/%-%.%_%~%!%*%'%(%)])", char_to_hex)
+    return url_data
 end
 
 function WebDavApi:listFolder(address, user, pass, folder_path)
-    path = self:urlEncode( folder_path )
+    local path = self:urlEncode( folder_path )
     local webdav_list = {}
     local webdav_file = {}
-    local tag, text
-    
+
     local has_trailing_slash = false
     local has_leading_slash = false
     if string.sub( address, -1 ) ~= "/" then has_trailing_slash = true end
@@ -100,7 +97,6 @@ function WebDavApi:listFolder(address, user, pass, folder_path)
 
     local data = table.concat(sink)
     if data ~= "" then
-        local item
         -- iterate through the <d:response> tags, each containing an entry
         for item in data:gmatch("<d:response>(.-)</d:response>") do
             --logger.dbg("WebDav catalog item=", item)
@@ -148,7 +144,6 @@ function WebDavApi:listFolder(address, user, pass, folder_path)
 end
 
 function WebDavApi:downloadFile(file_url, user, pass, local_path)
-    local request, sink = {}, {}
     local parsed = url.parse(file_url)
     local auth = string.format("%s:%s", user, pass)
     local headers = { ["Authorization"] = "Basic ".. mime.b64( auth ) }
