@@ -14,9 +14,7 @@ local _ = require("gettext")
 local WebDavApi = {
 }
 
-function WebDavApi:checkParentOrHomeDirectory( current_item, address, path )
-    -- [domain/webdav]/ we are are the top of the tree
-    -- [domain/webdav]/[path]/ we can go up to the parent directory
+function WebDavApi:isCurrentDirectory( current_item, address, path )
     local is_home, is_parent
     local home_path
     -- find first occurence of / after http(s)://
@@ -41,13 +39,7 @@ function WebDavApi:checkParentOrHomeDirectory( current_item, address, path )
             is_parent = true
         end
     end
-    return is_home, is_parent
-end
-
-function WebDavApi:getParentDir(dir)
-    local parent = dir:sub( 1, dir:match('^.*()/') - 1 )
-    if parent == "" or parent == nil then parent = "/" end
-    return parent
+    return is_home or is_parent
 end
 
 -- version of urlEncode that doesn't encode the /
@@ -93,14 +85,14 @@ function WebDavApi:listFolder(address, user, pass, folder_path)
         ["Content-Type"] = "application/xml" ,
         ["Depth"] = "1" ,
         ["Content-Length"] = #data}
-    request['url'] = webdav_url
-    request['method'] = 'PROPFIND'
-    request['headers'] = headers
-    request['source'] = ltn12.source.string(data)
-    request['sink'] = ltn12.sink.table(sink)
+    request["url"] = webdav_url
+    request["method"] = "PROPFIND"
+    request["headers"] = headers
+    request["source"] = ltn12.source.string(data)
+    request["sink"] = ltn12.sink.table(sink)
     http.TIMEOUT = 5
     https.TIMEOUT = 5
-    local httpRequest = parsed.scheme == 'http' and http.request or https.request
+    local httpRequest = parsed.scheme == "http" and http.request or https.request
     local headers_request = socket.skip(1, httpRequest(request))
     if headers_request == nil then
         return nil
@@ -114,23 +106,15 @@ function WebDavApi:listFolder(address, user, pass, folder_path)
             --logger.dbg("WebDav catalog item=", item)
             -- <d:href> is the path and filename of the entry.
             local item_fullpath = item:match("<d:href>(.*)</d:href>")
-            local is_home, is_parent = self:checkParentOrHomeDirectory( item_fullpath, address, path )
+            local is_current_dir = self:isCurrentDirectory( item_fullpath, address, path )
             local item_name = util.urlDecode( FFIUtil.basename( item_fullpath ) )
             local item_path = path .. "/" .. item_name
             if item:find("<d:collection/>") then
                 item_name = item_name .. "/"
-                if not is_home then
-                    local item_url, item_text
-                    if is_parent then 
-                        item_text = ".."
-                        item_url = util.urlDecode( self:getParentDir(path) )
-                    else
-                        item_text = item_name
-                        item_url = util.urlDecode( item_path )
-                    end
+                if not is_current_dir then
                     table.insert(webdav_list, {
-                        text = item_text,
-                        url = item_url,
+                        text = item_name,
+                        url = util.urlDecode( item_path ),
                         type = "folder",
                     })
                 end
@@ -170,10 +154,10 @@ function WebDavApi:downloadFile(file_url, user, pass, local_path)
     local headers = { ["Authorization"] = "Basic ".. mime.b64( auth ) }
     http.TIMEOUT = 5
     https.TIMEOUT = 5
-    local httpRequest = parsed.scheme == 'http' and http.request or https.request
+    local httpRequest = parsed.scheme == "http" and http.request or https.request
     local _, code_return, _ = httpRequest{
         url = file_url,
-        method = 'GET',
+        method = "GET",
         headers = headers,
         sink = ltn12.sink.file(io.open(local_path, "w"))
     }
