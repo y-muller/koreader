@@ -77,7 +77,7 @@ function WebDavApi:listFolder(address, user, pass, folder_path)
     local request, sink = {}, {}
     local parsed = url.parse(webdav_url)
     local data = [[<?xml version="1.0"?><a:propfind xmlns:a="DAV:"><a:prop><a:resourcetype/></a:prop></a:propfind>]]
-    local auth = string.format("%s:%s", user, pass) 
+    local auth = string.format("%s:%s", user, pass)
     local headers = { ["Authorization"] = "Basic ".. mime.b64( auth ) ,
         ["Content-Type"] = "application/xml" ,
         ["Depth"] = "1" ,
@@ -95,10 +95,10 @@ function WebDavApi:listFolder(address, user, pass, folder_path)
         return nil
     end
 
-    local data = table.concat(sink)
-    if data ~= "" then
+    local res_data = table.concat(sink)
+    if res_data ~= "" then
         -- iterate through the <d:response> tags, each containing an entry
-        for item in data:gmatch("<d:response>(.-)</d:response>") do
+        for item in res_data:gmatch("<d:response>(.-)</d:response>") do
             --logger.dbg("WebDav catalog item=", item)
             -- <d:href> is the path and filename of the entry.
             local item_fullpath = item:match("<d:href>(.*)</d:href>")
